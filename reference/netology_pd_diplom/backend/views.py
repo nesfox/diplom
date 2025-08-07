@@ -1,25 +1,33 @@
-from distutils.util import strtobool
+from backend.util import strtobool
 from rest_framework.request import Request
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
+from django.conf import settings
 from django.db import IntegrityError
 from django.db.models import Q, Sum, F
 from django.http import JsonResponse
+from django.urls import reverse
 from requests import get
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_yaml.renderers import YAMLRenderer
+from rest_framework import serializers
 from ujson import loads as load_json
-from yaml import load as load_yaml, Loader
+from drf_spectacular.utils import extend_schema, inline_serializer, OpenApiParameter, OpenApiTypes
 
 from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
-    Contact, ConfirmEmailToken
+    Contact, ConfirmEmailToken, STATE_CHOICES
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
     OrderItemSerializer, OrderSerializer, ContactSerializer
 from backend.signals import new_user_registered, new_order
+from netology_pd_diplom.celery_app import get_task
+from backend.celery_tasks import send_email, partner_export, partner_update
+from backend.schema import StatusSerializer, StatusAuthErrSerializer, ItemsSerializer, \
+    ConfirmEmailSerializer, NewTaskSerializer, OrderViewSerializer
 
 
 class RegisterAccount(APIView):
@@ -736,3 +744,143 @@ class OrderView(APIView):
                         return JsonResponse({'Status': True})
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
+@extend_schema(
+    tags=['Shop'],
+    summary='User orders management',
+    responses={
+        200: StatusSerializer,
+        403: StatusAuthErrSerializer,
+    }
+)
+class OrderView(APIView):
+    """API для работы с заказами пользователя"""
+    
+    @extend_schema(
+        summary='Get user orders',
+        responses={
+            200: OrderSerializer(many=True),
+            403: StatusAuthErrSerializer,
+        }
+    )
+    def get(self, request, *args, **kwargs):
+        """Получение списка заказов пользователя"""
+        if not request.user.is_authenticated:
+            return JsonResponse(
+                {'Status': False, 'Error': 'Требуется авторизация'}, 
+                status=403
+            )
+            
+        orders = Order.objects.filter(
+            user_id=request.user.id
+        ).exclude(state='basket').prefetch_related(
+            'ordered_items__product_info__product__category',
+            'ordered_items__product_info__product_parameters__parameter'
+        ).select_related('contact').annotate(
+            total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))
+        ).distinct()
+
+        serializer = OrderSerializer(orders, many=True)
+        return Response(serializer.data)
+
+    @extend_schema(
+        summary='Create new order from basket',
+        request=OrderViewSerializer,
+        responses={
+            200: StatusSerializer,
+            403: StatusAuthErrSerializer,
+        }
+    )
+    def post(self, request, *args, **kwargs):
+        """Создание нового заказа из корзины"""
+        if not request.user.is_authenticated:
+            return JsonResponse(
+                {'Status': False, 'Error': 'Требуется авторизация'},
+                status=403
+            )
+
+        if not {'id', 'contact'}.issubset(request.data):
+            return JsonResponse(
+                {'Status': False, 'Errors': 'Не указаны обязательные поля'},
+                status=400
+            )
+
+        try:
+            order_id = int(request.data['id'])
+            updated = Order.objects.filter(
+                user_id=request.user.id, 
+                id=order_id
+            ).update(
+                contact_id=request.data['contact'],
+                state='new'
+            )
+            
+            if updated:
+                new_order.send(sender=self.__class__, user_id=request.user.id)
+                return JsonResponse({'Status': True})
+                
+        except (ValueError, IntegrityError):
+            return JsonResponse(
+                {'Status': False, 'Errors': 'Некорректные данные заказа'},
+                status=400
+            )
+
+        return JsonResponse(
+            {'Status': False, 'Errors': 'Не удалось создать заказ'},
+            status=400
+        )
+
+
+@extend_schema(
+    tags=['Common'],
+    summary='Celery task results',
+    responses={
+        200: inline_serializer(
+            name='TaskResult',
+            fields={
+                'status': serializers.BooleanField(),
+                'task_id': serializers.CharField(),
+                'state': serializers.CharField(),
+                'result': serializers.CharField(allow_null=True)
+            }
+        ),
+        403: StatusAuthErrSerializer,
+    }
+)
+class ResultsView(APIView):
+    """API для проверки статуса асинхронных задач Celery"""
+    
+    throttle_scope = 'celery_tasks'
+
+    def get(self, request, *args, **kwargs):
+        """Получение результата выполнения задачи"""
+        if not request.user.is_authenticated:
+            return JsonResponse(
+                {'Status': False, 'Error': 'Требуется авторизация'},
+                status=403
+            )
+        
+        task_id = request.data.get('task_id')
+        if not task_id:
+            return JsonResponse(
+                {'Status': False, 'Errors': 'Не указан ID задачи'},
+                status=400
+            )
+
+        try:
+            task = get_task(task_id)
+        except Exception as e:
+            return JsonResponse(
+                {
+                    'Status': False, 
+                    'Errors': f'Задача {task_id} не найдена'
+                },
+                status=404
+            )
+
+        return JsonResponse({
+            'Status': True,
+            'Task_id': task_id,
+            'State': task.state,
+            'Results': task.result if task.state == 'SUCCESS' else str(task.result)
+        })

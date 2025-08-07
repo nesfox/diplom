@@ -15,8 +15,56 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.http import HttpResponse
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularSwaggerView,
+    SpectacularRedocView
+)
+import time
+
+
+def trigger_error(request):
+    """Тестовая view для проверки интеграции Sentry.
+    
+    Намеренно вызывает ошибку деления на ноль для тестирования Sentry.
+    В production должен быть заменен на корректную обработку ошибок.
+    """
+    division_by_zero = 1 / 0  # Намеренная ошибка для Sentry
+    return HttpResponse(division_by_zero)
+
+
+def simulate_long_request(request):
+    """Тестовая view для проверки мониторинга производительности.
+    
+    Имитирует долгий запрос (4 секунды) для тестирования 
+    производительности в Sentry.
+    """
+    time.sleep(4)
+    return HttpResponse("Long request completed")
+
 
 urlpatterns = [
+    # Админка и Jet
+    path('jet/', include('jet.urls', 'jet')),
     path('admin/', admin.site.urls),
-    path('api/v1/', include('backend.urls', namespace='backend'))
+    
+    # API endpoints
+    path('api/v1/', include('backend.urls', namespace='backend')),
+    
+    # Документация API
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/schema/swagger-ui/', 
+        SpectacularSwaggerView.as_view(url_name='schema'), 
+        name='swagger-ui'),
+    path('api/schema/redoc/', 
+        SpectacularRedocView.as_view(url_name='schema'), 
+        name='redoc'),
+    
+    # Профилирование
+    path('silk/', include('silk.urls', namespace='silk')),
+    
+    # Тестовые endpoints для мониторинга
+    path('sentry-debug/', trigger_error),
+    path('performance-test/', simulate_long_request),
 ]

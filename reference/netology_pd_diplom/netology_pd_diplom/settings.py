@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 """
 
 import os
-
+load_dotenv()
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -29,18 +29,27 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    'jet',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    # Сторонние приложения
     'rest_framework',
     'rest_framework.authtoken',
     'django_rest_passwordreset',
+    'drf_spectacular',
+    'cacheops',
+    'silk',
+    
+    # Локальные приложения
     'backend',
 ]
 
+# Middleware
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -49,15 +58,16 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'silk.middleware.SilkyMiddleware',
 ]
 
+# URL и шаблоны
 ROOT_URLCONF = 'netology_pd_diplom.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')]
-        ,
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -72,83 +82,126 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'netology_pd_diplom.wsgi.application'
 
-# Database
-# https://docs.djangoproject.com/en/2.2/ref/settings/#databases
-
+# База данных
 DATABASES = {
-
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.postgresql',
+        'HOST': os.getenv('PG_HOST', 'localhost'),
+        'PORT': os.getenv('PG_PORT', '5432'),
+        'NAME': os.getenv('PG_DB', 'diplom_db'),
+        'USER': os.getenv('PG_USER', 'diplom_user'),
+        'PASSWORD': os.getenv('PG_PASSWORD', 'diplom_password'),
     }
-
-
 }
 
-# Password validation
-# https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
-
+# Пароли и аутентификация
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
-
-# Internationalization
-# https://docs.djangoproject.com/en/2.2/topics/i18n/
-
-LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = 'UTC'
-
-USE_I18N = True
-
-USE_L10N = True
-
-USE_TZ = True
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/2.2/howto/static-files/
-
-STATIC_URL = '/static/'
 
 AUTH_USER_MODEL = 'backend.User'
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_USE_TLS = True
+# Интернационализация
+LANGUAGE_CODE = 'ru-ru'
+TIME_ZONE = 'Europe/Moscow'
+USE_I18N = True
+USE_L10N = True
+USE_TZ = True
 
-EMAIL_HOST = 'smtp.mail.ru'
+# Статические файлы
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
-EMAIL_HOST_USER = 'netology.diplom@mail.ru'
-EMAIL_HOST_PASSWORD = 'CLdm7yW4U9nivz9mbexu'
-EMAIL_PORT = '465'
-EMAIL_USE_SSL = True
+# Email
+EMAIL_CONFIG = {
+    'BACKEND': 'django.core.mail.backends.smtp.EmailBackend',
+    'HOST': os.getenv('EMAIL_HOST', 'smtp.mail.ru'),
+    'PORT': os.getenv('EMAIL_PORT', '465'),
+    'USER': os.getenv('EMAIL_USER', 'netology.diplom@mail.ru'),
+    'PASSWORD': os.getenv('EMAIL_PASSWORD', ''),
+    'USE_SSL': True,
+}
+
+EMAIL_BACKEND = EMAIL_CONFIG['BACKEND']
+EMAIL_HOST = EMAIL_CONFIG['HOST']
+EMAIL_PORT = EMAIL_CONFIG['PORT']
+EMAIL_HOST_USER = EMAIL_CONFIG['USER']
+EMAIL_HOST_PASSWORD = EMAIL_CONFIG['PASSWORD']
+EMAIL_USE_SSL = EMAIL_CONFIG['USE_SSL']
 SERVER_EMAIL = EMAIL_HOST_USER
 
+# REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 40,
-
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
-
+        'rest_framework_yaml.renderers.YAMLRenderer',
     ),
-
     'DEFAULT_AUTHENTICATION_CLASSES': (
-
         'rest_framework.authentication.TokenAuthentication',
     ),
-
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.ScopedRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/hour',
+        'user': '1000/hour',
+        'export': '50/day',
+        'celery_tasks': '2000/hour',
+    },
+    'TEST_REQUEST_DEFAULT_FORMAT': 'json',
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+# Celery
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/1')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/2')
+
+# DRF Spectacular (OpenAPI)
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Дипломный проект Python-разработчика',
+    'DESCRIPTION': 'API для дипломного проекта Netology',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+}
+
+# Cacheops (кеширование)
+CACHEOPS_REDIS = os.getenv('CACHEOPS_REDIS', 'redis://localhost:6379/3')
+CACHEOPS_DEFAULTS = {'timeout': 60 * 60}
+CACHEOPS = {
+    'auth.user': {'ops': 'get', 'timeout': 60 * 15},
+    'auth.*': {'ops': ('fetch', 'get')},
+    'auth.permission': {'ops': 'all'},
+    '*.*': {},
+}
+
+# Jet Admin
+JET_THEMES = [
+    {'theme': 'default', 'color': '#47bac1', 'title': 'Default'},
+    {'theme': 'green', 'color': '#44b78b', 'title': 'Green'},
+    {'theme': 'light-green', 'color': '#2faa60', 'title': 'Light Green'},
+    {'theme': 'light-violet', 'color': '#a464c4', 'title': 'Light Violet'},
+    {'theme': 'light-blue', 'color': '#5EADDE', 'title': 'Light Blue'},
+    {'theme': 'light-gray', 'color': '#222', 'title': 'Light Gray'},
+]
+JET_SIDE_MENU_COMPACT = True
+JET_CHANGE_FORM_SIBLING_LINKS = True
+
+# Sentry (мониторинг ошибок)
+if os.getenv('SENTRY_DSN'):
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=os.getenv('SENTRY_DSN'),
+        integrations=[DjangoIntegration()],
+        traces_sample_rate=1.0,
+        send_default_pii=True,
+    )

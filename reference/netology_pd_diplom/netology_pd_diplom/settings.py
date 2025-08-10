@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 """
 
 import os
+from pathlib import Path
+from dotenv import load_dotenv
 load_dotenv()
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -20,11 +22,13 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '=hs6$#5om031nujz4staql9mbuste=!dc^6)4opsjq!vvjxzj@'
-
+BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Application definition
 
@@ -42,9 +46,8 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'django_rest_passwordreset',
     'drf_spectacular',
-    'cacheops',
     'silk',
-    
+
     # Локальные приложения
     'backend',
 ]
@@ -83,17 +86,23 @@ TEMPLATES = [
 WSGI_APPLICATION = 'netology_pd_diplom.wsgi.application'
 
 # База данных
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'HOST': os.getenv('PG_HOST', 'localhost'),
+#         'PORT': os.getenv('PG_PORT', '5432'),
+#         'NAME': os.getenv('PG_DB', 'diplom_db'),
+#         'USER': os.getenv('PG_USER', 'diplom_user'),
+#         'PASSWORD': os.getenv('PG_PASSWORD', 'diplom_password'),
+#     }
+# }
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'HOST': os.getenv('PG_HOST', 'localhost'),
-        'PORT': os.getenv('PG_PORT', '5432'),
-        'NAME': os.getenv('PG_DB', 'diplom_db'),
-        'USER': os.getenv('PG_USER', 'diplom_user'),
-        'PASSWORD': os.getenv('PG_PASSWORD', 'diplom_password'),
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
-
 # Пароли и аутентификация
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -160,9 +169,6 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
-# Celery
-CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/1')
-CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/2')
 
 # DRF Spectacular (OpenAPI)
 SPECTACULAR_SETTINGS = {
@@ -172,26 +178,51 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
 }
 
-# Cacheops (кеширование)
-CACHEOPS_REDIS = os.getenv('CACHEOPS_REDIS', 'redis://localhost:6379/3')
-CACHEOPS_DEFAULTS = {'timeout': 60 * 60}
-CACHEOPS = {
-    'auth.user': {'ops': 'get', 'timeout': 60 * 15},
-    'auth.*': {'ops': ('fetch', 'get')},
-    'auth.permission': {'ops': 'all'},
-    '*.*': {},
-}
 
-# Jet Admin
 JET_THEMES = [
-    {'theme': 'default', 'color': '#47bac1', 'title': 'Default'},
-    {'theme': 'green', 'color': '#44b78b', 'title': 'Green'},
-    {'theme': 'light-green', 'color': '#2faa60', 'title': 'Light Green'},
-    {'theme': 'light-violet', 'color': '#a464c4', 'title': 'Light Violet'},
-    {'theme': 'light-blue', 'color': '#5EADDE', 'title': 'Light Blue'},
-    {'theme': 'light-gray', 'color': '#222', 'title': 'Light Gray'},
+    {
+        'theme': 'default',
+        'color': '#3f51b5',
+        'title': 'Default'
+    },
+    {
+        'theme': 'material-blue',
+        'color': '#2196f3',
+        'title': 'Material Blue'
+    },
+    {
+        'theme': 'deep-purple',
+        'color': '#673ab7',
+        'title': 'Deep Purple'
+    },
+    {
+        'theme': 'teal',
+        'color': '#009688',
+        'title': 'Teal'
+    },
+    {
+        'theme': 'orange',
+        'color': '#ff5722',
+        'title': 'Orange'
+    },
+    {
+        'theme': 'dark',
+        'color': '#121212',
+        'title': 'Dark'
+    },
+    {
+        'theme': 'light-blue',
+        'color': '#03a9f4',
+        'title': 'Light Blue'
+    },
+    {
+        'theme': 'green',
+        'color': '#4caf50', 
+        'title': 'Green'
+    },
 ]
 JET_SIDE_MENU_COMPACT = True
+
 JET_CHANGE_FORM_SIBLING_LINKS = True
 
 # Sentry (мониторинг ошибок)

@@ -1,4 +1,4 @@
-from backend.util import strtobool
+from backend.util import str_to_bool
 from rest_framework.request import Request
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
@@ -219,6 +219,27 @@ class ShopView(ListAPIView):
     """
     queryset = Shop.objects.filter(state=True)
     serializer_class = ShopSerializer
+
+
+class PartnerExport(APIView):
+    """Класс для экспорта данных партнера"""
+    
+    def get(self, request, *args, **kwargs):
+        """
+        Экспорт данных партнера
+        
+        Returns:
+            Response: Данные магазина в формате JSON
+        """
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+
+        if request.user.type != 'shop':
+            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
+
+        shop = request.user.shop
+        serializer = PartnerExportSerializer(shop)
+        return Response(serializer.data)
 
 
 class ProductInfoView(APIView):
@@ -518,7 +539,7 @@ class PartnerState(APIView):
         state = request.data.get('state')
         if state:
             try:
-                Shop.objects.filter(user_id=request.user.id).update(state=strtobool(state))
+                Shop.objects.filter(user_id=request.user.id).update(state=str_to_bool(state))
                 return JsonResponse({'Status': True})
             except ValueError as error:
                 return JsonResponse({'Status': False, 'Errors': str(error)})

@@ -17,17 +17,46 @@ from rest_framework.views import APIView
 from rest_framework_yaml.renderers import YAMLRenderer
 from rest_framework import serializers
 from ujson import loads as load_json
-from drf_spectacular.utils import extend_schema, inline_serializer, OpenApiParameter, OpenApiTypes
+from drf_spectacular.utils import (
+    extend_schema,
+    inline_serializer,
+    OpenApiParameter,
+    OpenApiTypes
+)
 
-from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
-    Contact, ConfirmEmailToken, STATE_CHOICES
-from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
-    OrderItemSerializer, OrderSerializer, ContactSerializer
+from backend.models import (
+    Shop,
+    Category,
+    Product,
+    ProductInfo,
+    Parameter,
+    ProductParameter,
+    Order,
+    OrderItem,
+    Contact,
+    ConfirmEmailToken,
+    STATE_CHOICES
+)
+from backend.serializers import (
+    UserSerializer,
+    CategorySerializer,
+    ShopSerializer,
+    ProductInfoSerializer,
+    OrderItemSerializer,
+    OrderSerializer,
+    ContactSerializer
+)
 from backend.signals import new_user_registered, new_order
 from netology_pd_diplom.celery_app import get_task
 from backend.celery_tasks import send_email, partner_export, partner_update
-from backend.schema import StatusSerializer, StatusAuthErrSerializer, ItemsSerializer, \
-    ConfirmEmailSerializer, NewTaskSerializer, OrderViewSerializer
+from backend.schema import (
+    StatusSerializer,
+    StatusAuthErrSerializer,
+    ItemsSerializer,
+    ConfirmEmailSerializer,
+    NewTaskSerializer,
+    OrderViewSerializer
+)
 
 
 class RegisterAccount(APIView):
@@ -45,10 +74,18 @@ class RegisterAccount(APIView):
                 request (Request): The Django request object.
 
             Returns:
-                JsonResponse: The response indicating the status of the operation and any errors.
+                JsonResponse: The response indicating the
+                status of the operation and any errors.
             """
         # проверяем обязательные аргументы
-        if {'first_name', 'last_name', 'email', 'password', 'company', 'position'}.issubset(request.data):
+        if {
+            'first_name',
+            'last_name',
+            'email',
+            'password',
+            'company',
+            'position'
+        }.issubset(request.data):
 
             # проверяем пароль на сложность
             sad = 'asd'
@@ -71,9 +108,13 @@ class RegisterAccount(APIView):
                     user.save()
                     return JsonResponse({'Status': True})
                 else:
-                    return JsonResponse({'Status': False, 'Errors': user_serializer.errors})
+                    return JsonResponse(
+                        {'Status': False, 'Errors': user_serializer.errors}
+                    )
 
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        return JsonResponse(
+            {'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}
+        )
 
 
 class ConfirmAccount(APIView):
@@ -90,22 +131,29 @@ class ConfirmAccount(APIView):
                 - request (Request): The Django request object.
 
                 Returns:
-                - JsonResponse: The response indicating the status of the operation and any errors.
+                - JsonResponse: The response indicating the
+                status of the operation and any errors.
                 """
         # проверяем обязательные аргументы
         if {'email', 'token'}.issubset(request.data):
 
-            token = ConfirmEmailToken.objects.filter(user__email=request.data['email'],
-                                                     key=request.data['token']).first()
+            token = ConfirmEmailToken.objects.filter(
+                user__email=request.data['email'],
+                key=request.data['token']
+            ).first()
             if token:
                 token.user.is_active = True
                 token.user.save()
                 token.delete()
                 return JsonResponse({'Status': True})
             else:
-                return JsonResponse({'Status': False, 'Errors': 'Неправильно указан токен или email'})
+                return JsonResponse(
+                    {'Status': False, 'Errors': 'Неправильный токен или email'}
+                )
 
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        return JsonResponse(
+            {'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}
+        )
 
 
 class AccountDetails(APIView):
@@ -129,10 +177,14 @@ class AccountDetails(APIView):
                - request (Request): The Django request object.
 
                Returns:
-               - Response: The response containing the details of the authenticated user.
+               - Response: The response containing the details of
+               the authenticated user.
         """
         if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Log in required'},
+                status=403
+            )
 
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
@@ -146,10 +198,14 @@ class AccountDetails(APIView):
                 - request (Request): The Django request object.
 
                 Returns:
-                - JsonResponse: The response indicating the status of the operation and any errors.
+                - JsonResponse: The response indicating the status of
+                the operation and any errors.
                 """
         if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Log in required'},
+                status=403
+            )
         # проверяем обязательные аргументы
 
         if 'password' in request.data:
@@ -162,17 +218,25 @@ class AccountDetails(APIView):
                 # noinspection PyTypeChecker
                 for item in password_error:
                     error_array.append(item)
-                return JsonResponse({'Status': False, 'Errors': {'password': error_array}})
+                return JsonResponse(
+                    {'Status': False, 'Errors': {'password': error_array}}
+                )
             else:
                 request.user.set_password(request.data['password'])
 
         # проверяем остальные данные
-        user_serializer = UserSerializer(request.user, data=request.data, partial=True)
+        user_serializer = UserSerializer(
+            request.user,
+            data=request.data,
+            partial=True
+        )
         if user_serializer.is_valid():
             user_serializer.save()
             return JsonResponse({'Status': True})
         else:
-            return JsonResponse({'Status': False, 'Errors': user_serializer.errors})
+            return JsonResponse(
+                {'Status': False, 'Errors': user_serializer.errors}
+            )
 
 
 class LoginAccount(APIView):
@@ -189,10 +253,15 @@ class LoginAccount(APIView):
                     request (Request): The Django request object.
 
                 Returns:
-                    JsonResponse: The response indicating the status of the operation and any errors.
+                    JsonResponse: The response indicating the status of the
+                    operation and any errors.
                 """
         if {'email', 'password'}.issubset(request.data):
-            user = authenticate(request, username=request.data['email'], password=request.data['password'])
+            user = authenticate(
+                request,
+                username=request.data['email'],
+                password=request.data['password']
+            )
 
             if user is not None:
                 if user.is_active:
@@ -200,9 +269,13 @@ class LoginAccount(APIView):
 
                     return JsonResponse({'Status': True, 'Token': token.key})
 
-            return JsonResponse({'Status': False, 'Errors': 'Не удалось авторизовать'})
+            return JsonResponse(
+                {'Status': False, 'Errors': 'Не удалось авторизовать'}
+            )
 
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        return JsonResponse(
+            {'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}
+        )
 
 
 class CategoryView(ListAPIView):
@@ -223,19 +296,25 @@ class ShopView(ListAPIView):
 
 class PartnerExport(APIView):
     """Класс для экспорта данных партнера"""
-    
+
     def get(self, request, *args, **kwargs):
         """
         Экспорт данных партнера
-        
+
         Returns:
             Response: Данные магазина в формате JSON
         """
         if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Log in required'},
+                status=403
+            )
 
         if request.user.type != 'shop':
-            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Только для магазинов'},
+                status=403
+            )
 
         shop = request.user.shop
         serializer = PartnerExportSerializer(shop)
@@ -400,7 +479,8 @@ class BasketView(APIView):
                - request (Request): The Django request object.
 
                Returns:
-               - JsonResponse: The response indicating the status of the operation and any errors.
+               - JsonResponse: The response indicating the
+               status of the operation and any errors.
                """
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)

@@ -40,7 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+
     # Сторонние приложения
     'rest_framework',
     'rest_framework.authtoken',
@@ -217,7 +217,7 @@ JET_THEMES = [
     },
     {
         'theme': 'green',
-        'color': '#4caf50', 
+        'color': '#4caf50',
         'title': 'Green'
     },
 ]

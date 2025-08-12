@@ -1,7 +1,14 @@
 from celery import shared_task
 from django.core.mail import EmailMultiAlternatives
 from yaml import load as load_yaml, Loader
-from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter
+from backend.models import (
+    Shop,
+    Category,
+    Product,
+    ProductInfo,
+    Parameter,
+    ProductParameter
+)
 from backend.serializers import PartnerExportSerializer
 
 
@@ -31,7 +38,7 @@ def partner_update(stream, user_id):
 
     # Обновление магазина и категорий
     shop, _ = Shop.objects.get_or_create(name=data['shop'], user_id=user_id)
-    
+
     for category in data['categories']:
         category_obj, _ = Category.objects.get_or_create(
             id=category['id'],

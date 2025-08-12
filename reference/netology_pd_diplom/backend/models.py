@@ -2,7 +2,6 @@ from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import models
-from django.utils.translation import gettext_lazy as _
 from django_rest_passwordreset.tokens import get_token_generator
 
 
@@ -51,7 +50,9 @@ class UserManager(BaseUserManager):
         if extra_fields.get('is_staff') is not True:
             raise ValueError('Суперпользователь должен иметь is_staff=True')
         if extra_fields.get('is_superuser') is not True:
-            raise ValueError('Суперпользователь должен иметь is_superuser=True')
+            raise ValueError(
+                'Суперпользователь должен иметь is_superuser=True'
+            )
 
         return self._create_user(email, password, **extra_fields)
 
@@ -61,7 +62,7 @@ class User(AbstractUser):
     REQUIRED_FIELDS = []
     objects = UserManager()
     USERNAME_FIELD = 'email'
-    
+
     email = models.EmailField('Email', unique=True)
     company = models.CharField('Компания', max_length=40, blank=True)
     position = models.CharField('Должность', max_length=40, blank=True)
@@ -69,10 +70,17 @@ class User(AbstractUser):
         'Логин',
         max_length=150,
         validators=[UnicodeUsernameValidator()],
-        error_messages={'unique': "Пользователь с таким логином уже существует"},
+        error_messages={
+            'unique': "Пользователь с таким логином уже существует"
+        },
     )
     is_active = models.BooleanField('Активен', default=False)
-    type = models.CharField('Тип пользователя', choices=USER_TYPE_CHOICES, max_length=5, default='buyer')
+    type = models.CharField(
+        'Тип пользователя',
+        choices=USER_TYPE_CHOICES,
+        max_length=5,
+        default='buyer'
+    )
 
     class Meta:
         verbose_name = 'Пользователь'
@@ -108,7 +116,12 @@ class Shop(models.Model):
 class Category(models.Model):
     """Модель категории"""
     name = models.CharField('Название', max_length=40)
-    shops = models.ManyToManyField(Shop, verbose_name='Магазины', related_name='categories', blank=True)
+    shops = models.ManyToManyField(
+        Shop,
+        verbose_name='Магазины',
+        related_name='categories',
+        blank=True
+    )
 
     class Meta:
         verbose_name = 'Категория'
@@ -165,7 +178,10 @@ class ProductInfo(models.Model):
         verbose_name = 'Информация о продукте'
         verbose_name_plural = 'Информация о продуктах'
         constraints = [
-            models.UniqueConstraint(fields=['product', 'shop', 'external_id'], name='unique_product_info'),
+            models.UniqueConstraint(
+                fields=['product', 'shop', 'external_id'],
+                name='unique_product_info'
+            ),
         ]
 
     def __str__(self):
@@ -207,7 +223,10 @@ class ProductParameter(models.Model):
         verbose_name = 'Параметр продукта'
         verbose_name_plural = 'Параметры продуктов'
         constraints = [
-            models.UniqueConstraint(fields=['product_info', 'parameter'], name='unique_product_parameter'),
+            models.UniqueConstraint(
+                fields=['product_info', 'parameter'],
+                name='unique_product_parameter'
+            ),
         ]
 
 
@@ -286,7 +305,10 @@ class OrderItem(models.Model):
         verbose_name = 'Позиция заказа'
         verbose_name_plural = 'Позиции заказов'
         constraints = [
-            models.UniqueConstraint(fields=['order_id', 'product_info'], name='unique_order_item'),
+            models.UniqueConstraint(
+                fields=['order_id', 'product_info'],
+                name='unique_order_item'
+            ),
         ]
 
 
@@ -298,7 +320,10 @@ class ConfirmEmailToken(models.Model):
         on_delete=models.CASCADE,
         verbose_name='Пользователь'
     )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Дата создания'
+    )
     key = models.CharField('Ключ', max_length=64, db_index=True, unique=True)
 
     class Meta:

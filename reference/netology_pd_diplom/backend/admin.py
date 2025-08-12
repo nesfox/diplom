@@ -1,7 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.db.models import F, Sum
-
 from backend.models import (
     User,
     Shop,
@@ -15,6 +14,7 @@ from backend.models import (
     Contact,
     ConfirmEmailToken
 )
+
 
 # ====================== USER ADMIN CONFIG ======================
 @admin.register(User)

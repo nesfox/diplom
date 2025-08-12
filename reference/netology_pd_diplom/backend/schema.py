@@ -1,8 +1,6 @@
 from drf_spectacular.utils import (
     inline_serializer,
-    extend_schema,
-    OpenApiParameter,
-    OpenApiTypes
+    extend_schema
 )
 from rest_framework import serializers
 from backend.serializers import OrderSerializer
@@ -178,7 +176,7 @@ class FixBasketView(OpenApiViewExtension):
             )
             def delete(self, request, *args, **kwargs):
                 pass
-        
+
         return FixedBasketView
 
 
@@ -217,7 +215,7 @@ class FixPartnerOrders(OpenApiViewExtension):
             )
             def get(self, request, *args, **kwargs):
                 pass
-            
+
             @extend_schema(
                 summary='Update order status',
                 responses={200: StatusSerializer},

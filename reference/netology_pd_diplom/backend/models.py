@@ -236,7 +236,7 @@ class Contact(models.Model):
         User,
         verbose_name='Пользователь',
         related_name='contacts',
-        blank=True,
+        blank=False,
         on_delete=models.CASCADE
     )
     city = models.CharField('Город', max_length=50)
@@ -250,9 +250,10 @@ class Contact(models.Model):
     class Meta:
         verbose_name = 'Контакт'
         verbose_name_plural = 'Контакты'
+        ordering = ('-id',)  # Добавлено для стандартной сортировки
 
     def __str__(self):
-        return f'{self.city} {self.street} {self.house}'
+        return f'{self.city} {self.street} {self.house} (пользователь: {self.user.email})'
 
 
 class Order(models.Model):

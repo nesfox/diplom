@@ -88,7 +88,6 @@ class RegisterAccount(APIView):
         }.issubset(request.data):
 
             # проверяем пароль на сложность
-            sad = 'asd'
             try:
                 validate_password(request.data['password'])
             except Exception as password_error:
@@ -96,7 +95,9 @@ class RegisterAccount(APIView):
                 # noinspection PyTypeChecker
                 for item in password_error:
                     error_array.append(item)
-                return JsonResponse({'Status': False, 'Errors': {'password': error_array}})
+                return JsonResponse(
+                    {'Status': False, 'Errors': {'password': error_array}}
+                )
             else:
                 # проверяем данные для уникальности имени пользователя
 
@@ -386,10 +387,14 @@ class BasketView(APIView):
                 - request (Request): The Django request object.
 
                 Returns:
-                - Response: The response containing the items in the user's basket.
+                - Response: The response containing the
+                items in the user's basket.
                 """
         if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Log in required'},
+                status=403
+            )
         basket = Order.objects.filter(
             user_id=request.user.id, state='basket').prefetch_related(
             'ordered_items__product_info__product__category',
@@ -408,19 +413,28 @@ class BasketView(APIView):
                - request (Request): The Django request object.
 
                Returns:
-               - JsonResponse: The response indicating the status of the operation and any errors.
+               - JsonResponse: The response indicating the
+               status of the operation and any errors.
                """
         if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Log in required'},
+                status=403
+            )
 
         items_sting = request.data.get('items')
         if items_sting:
             try:
                 items_dict = load_json(items_sting)
             except ValueError:
-                return JsonResponse({'Status': False, 'Errors': 'Неверный формат запроса'})
+                return JsonResponse(
+                    {'Status': False, 'Errors': 'Неверный формат запроса'}
+                )
             else:
-                basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
+                basket, _ = Order.objects.get_or_create(
+                    user_id=request.user.id,
+                    state='basket'
+                )
                 objects_created = 0
                 for order_item in items_dict:
                     order_item.update({'order': basket.id})
@@ -429,16 +443,24 @@ class BasketView(APIView):
                         try:
                             serializer.save()
                         except IntegrityError as error:
-                            return JsonResponse({'Status': False, 'Errors': str(error)})
+                            return JsonResponse(
+                                {'Status': False, 'Errors': str(error)}
+                            )
                         else:
                             objects_created += 1
 
                     else:
 
-                        return JsonResponse({'Status': False, 'Errors': serializer.errors})
+                        return JsonResponse(
+                            {'Status': False, 'Errors': serializer.errors}
+                        )
 
-                return JsonResponse({'Status': True, 'Создано объектов': objects_created})
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+                return JsonResponse(
+                    {'Status': True, 'Создано объектов': objects_created}
+                )
+        return JsonResponse(
+            {'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}
+        )
 
     # удалить товары из корзины
     def delete(self, request, *args, **kwargs):
@@ -449,15 +471,22 @@ class BasketView(APIView):
                 - request (Request): The Django request object.
 
                 Returns:
-                - JsonResponse: The response indicating the status of the operation and any errors.
+                - JsonResponse: The response indicating the
+                status of the operation and any errors.
                 """
         if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Log in required'},
+                status=403
+            )
 
         items_sting = request.data.get('items')
         if items_sting:
             items_list = items_sting.split(',')
-            basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
+            basket, _ = Order.objects.get_or_create(
+                user_id=request.user.id,
+                state='basket'
+            )
             query = Q()
             objects_deleted = False
             for order_item_id in items_list:
@@ -467,8 +496,12 @@ class BasketView(APIView):
 
             if objects_deleted:
                 deleted_count = OrderItem.objects.filter(query).delete()[0]
-                return JsonResponse({'Status': True, 'Удалено объектов': deleted_count})
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+                return JsonResponse(
+                    {'Status': True, 'Удалено объектов': deleted_count}
+                )
+        return JsonResponse(
+            {'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}
+        )
 
     # добавить позиции в корзину
     def put(self, request, *args, **kwargs):
@@ -483,24 +516,41 @@ class BasketView(APIView):
                status of the operation and any errors.
                """
         if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Log in required'},
+                status=403
+            )
 
         items_sting = request.data.get('items')
         if items_sting:
             try:
                 items_dict = load_json(items_sting)
             except ValueError:
-                return JsonResponse({'Status': False, 'Errors': 'Неверный формат запроса'})
+                return JsonResponse(
+                    {'Status': False, 'Errors': 'Неверный формат запроса'}
+                )
             else:
-                basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
+                basket, _ = Order.objects.get_or_create(
+                    user_id=request.user.id,
+                    state='basket'
+                )
                 objects_updated = 0
                 for order_item in items_dict:
-                    if type(order_item['id']) == int and type(order_item['quantity']) == int:
-                        objects_updated += OrderItem.objects.filter(order_id=basket.id, id=order_item['id']).update(
-                            quantity=order_item['quantity'])
+                    if type(
+                        order_item['id']
+                    ) == int and type(order_item['quantity']) == int:
+                        objects_updated += OrderItem.objects.filter(
+                            order_id=basket.id,
+                            id=order_item['id']).update(
+                            quantity=order_item['quantity']
+                        )
 
-                return JsonResponse({'Status': True, 'Обновлено объектов': objects_updated})
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+                return JsonResponse(
+                    {'Status': True, 'Обновлено объектов': objects_updated}
+                )
+        return JsonResponse(
+            {'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}
+        )
 
 
 class PartnerUpdate(APIView):
@@ -525,10 +575,16 @@ class PartnerUpdate(APIView):
                 - JsonResponse: The response indicating the status of the operation and any errors.
                 """
         if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Log in required'},
+                status=403
+            )
 
         if request.user.type != 'shop':
-            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Только для магазинов'},
+                status=403
+            )
 
         url = request.data.get('url')
         if url:
@@ -542,31 +598,48 @@ class PartnerUpdate(APIView):
 
                 data = load_yaml(stream, Loader=Loader)
 
-                shop, _ = Shop.objects.get_or_create(name=data['shop'], user_id=request.user.id)
+                shop, _ = Shop.objects.get_or_create(
+                    name=data['shop'],
+                    user_id=request.user.id
+                )
                 for category in data['categories']:
-                    category_object, _ = Category.objects.get_or_create(id=category['id'], name=category['name'])
+                    category_object, _ = Category.objects.get_or_create(
+                        id=category['id'],
+                        name=category['name']
+                    )
                     category_object.shops.add(shop.id)
                     category_object.save()
                 ProductInfo.objects.filter(shop_id=shop.id).delete()
                 for item in data['goods']:
-                    product, _ = Product.objects.get_or_create(name=item['name'], category_id=item['category'])
+                    product, _ = Product.objects.get_or_create(
+                        name=item['name'],
+                        category_id=item['category']
+                    )
 
-                    product_info = ProductInfo.objects.create(product_id=product.id,
-                                                              external_id=item['id'],
-                                                              model=item['model'],
-                                                              price=item['price'],
-                                                              price_rrc=item['price_rrc'],
-                                                              quantity=item['quantity'],
-                                                              shop_id=shop.id)
+                    product_info = ProductInfo.objects.create(
+                        product_id=product.id,
+                        external_id=item['id'],
+                        model=item['model'],
+                        price=item['price'],
+                        price_rrc=item['price_rrc'],
+                        quantity=item['quantity'],
+                        shop_id=shop.id
+                    )
                     for name, value in item['parameters'].items():
-                        parameter_object, _ = Parameter.objects.get_or_create(name=name)
-                        ProductParameter.objects.create(product_info_id=product_info.id,
-                                                        parameter_id=parameter_object.id,
-                                                        value=value)
+                        parameter_object, _ = Parameter.objects.get_or_create(
+                            name=name
+                        )
+                        ProductParameter.objects.create(
+                            product_info_id=product_info.id,
+                            parameter_id=parameter_object.id,
+                            value=value
+                        )
 
                 return JsonResponse({'Status': True})
 
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        return JsonResponse(
+            {'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}
+        )
 
 
 class PartnerState(APIView):
@@ -591,10 +664,16 @@ class PartnerState(APIView):
                - Response: The response containing the state of the partner.
                """
         if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Log in required'},
+                status=403
+            )
 
         if request.user.type != 'shop':
-            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Только для магазинов'},
+                status=403
+            )
 
         shop = request.user.shop
         serializer = ShopSerializer(shop)
@@ -609,22 +688,32 @@ class PartnerState(APIView):
                - request (Request): The Django request object.
 
                Returns:
-               - JsonResponse: The response indicating the status of the operation and any errors.
+               - JsonResponse: The response indicating the status
+               of the operation and any errors.
                """
         if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Log in required'},
+                status=403
+            )
 
         if request.user.type != 'shop':
-            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Только для магазинов'},
+                status=403
+            )
         state = request.data.get('state')
         if state:
             try:
-                Shop.objects.filter(user_id=request.user.id).update(state=str_to_bool(state))
+                Shop.objects.filter(
+                    user_id=request.user.id).update(state=str_to_bool(state))
                 return JsonResponse({'Status': True})
             except ValueError as error:
                 return JsonResponse({'Status': False, 'Errors': str(error)})
 
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        return JsonResponse(
+            {'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}
+        )
 
 
 class PartnerOrders(APIView):
@@ -645,13 +734,20 @@ class PartnerOrders(APIView):
                - request (Request): The Django request object.
 
                Returns:
-               - Response: The response containing the orders associated with the partner.
+               - Response: The response containing the orders
+               associated with the partner.
                """
         if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Log in required'},
+                status=403
+            )
 
         if request.user.type != 'shop':
-            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Только для магазинов'},
+                status=403
+            )
 
         order = Order.objects.filter(
             ordered_items__product_info__shop__user_id=request.user.id).exclude(state='basket').prefetch_related(
@@ -689,7 +785,10 @@ class ContactView(APIView):
                - Response: The response containing the contact information.
                """
         if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Log in required'},
+                status=403
+            )
         contact = Contact.objects.filter(
             user_id=request.user.id)
         serializer = ContactSerializer(contact, many=True)
@@ -704,10 +803,14 @@ class ContactView(APIView):
                - request (Request): The Django request object.
 
                Returns:
-               - JsonResponse: The response indicating the status of the operation and any errors.
+               - JsonResponse: The response indicating the
+               status of the operation and any errors.
                """
         if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Log in required'},
+                status=403
+            )
 
         if {'city', 'street', 'phone'}.issubset(request.data):
             request.data._mutable = True
@@ -718,9 +821,13 @@ class ContactView(APIView):
                 serializer.save()
                 return JsonResponse({'Status': True})
             else:
-                return JsonResponse({'Status': False, 'Errors': serializer.errors})
+                return JsonResponse(
+                    {'Status': False, 'Errors': serializer.errors}
+                )
 
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        return JsonResponse(
+            {'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}
+        )
 
     # удалить контакт
     def delete(self, request, *args, **kwargs):
@@ -731,10 +838,14 @@ class ContactView(APIView):
                - request (Request): The Django request object.
 
                Returns:
-               - JsonResponse: The response indicating the status of the operation and any errors.
+               - JsonResponse: The response indicating the
+               status of the operation and any errors.
                """
         if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Log in required'},
+                status=403
+            )
 
         items_sting = request.data.get('items')
         if items_sting:
@@ -748,8 +859,12 @@ class ContactView(APIView):
 
             if objects_deleted:
                 deleted_count = Contact.objects.filter(query).delete()[0]
-                return JsonResponse({'Status': True, 'Удалено объектов': deleted_count})
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+                return JsonResponse(
+                    {'Status': True, 'Удалено объектов': deleted_count}
+                )
+        return JsonResponse(
+            {'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}
+        )
 
     # редактировать контакт
     def put(self, request, *args, **kwargs):
@@ -761,23 +876,37 @@ class ContactView(APIView):
                    - request (Request): The Django request object.
 
                    Returns:
-                   - JsonResponse: The response indicating the status of the operation and any errors.
+                   - JsonResponse: The response indicating the status
+                   of the operation and any errors.
                    """
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Log in required'},
+                status=403
+            )
 
         if 'id' in request.data:
             if request.data['id'].isdigit():
-                contact = Contact.objects.filter(id=request.data['id'], user_id=request.user.id).first()
+                contact = Contact.objects.filter(
+                    id=request.data['id'],
+                    user_id=request.user.id
+                ).first()
                 print(contact)
                 if contact:
-                    serializer = ContactSerializer(contact, data=request.data, partial=True)
+                    serializer = ContactSerializer(
+                        contact, data=request.data,
+                        partial=True
+                    )
                     if serializer.is_valid():
                         serializer.save()
                         return JsonResponse({'Status': True})
                     else:
-                        return JsonResponse({'Status': False, 'Errors': serializer.errors})
+                        return JsonResponse(
+                            {'Status': False, 'Errors': serializer.errors}
+                        )
 
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        return JsonResponse(
+            {'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}
+        )
 
 
 class OrderView(APIView):
@@ -805,7 +934,10 @@ class OrderView(APIView):
                - Response: The response containing the details of the order.
                """
         if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Log in required'},
+                status=403
+            )
         order = Order.objects.filter(
             user_id=request.user.id).exclude(state='basket').prefetch_related(
             'ordered_items__product_info__product__category',
@@ -824,10 +956,14 @@ class OrderView(APIView):
                - request (Request): The Django request object.
 
                Returns:
-               - JsonResponse: The response indicating the status of the operation and any errors.
+               - JsonResponse: The response indicating the
+               status of the operation and any errors.
                """
         if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+            return JsonResponse(
+                {'Status': False, 'Error': 'Log in required'},
+                status=403
+            )
 
         if {'id', 'contact'}.issubset(request.data):
             if request.data['id'].isdigit():
@@ -838,13 +974,21 @@ class OrderView(APIView):
                         state='new')
                 except IntegrityError as error:
                     print(error)
-                    return JsonResponse({'Status': False, 'Errors': 'Неправильно указаны аргументы'})
+                    return JsonResponse(
+                        {'Status': False, 'Errors': 'Неправильные аргументы'}
+                    )
                 else:
                     if is_updated:
-                        new_order.send(sender=self.__class__, user_id=request.user.id)
+                        new_order.send(
+                            sender=self.__class__,
+                            user_id=request.user.id
+                        )
                         return JsonResponse({'Status': True})
 
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        return JsonResponse(
+            {'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}
+        )
+
 
 @extend_schema(
     tags=['Shop'],
@@ -854,9 +998,11 @@ class OrderView(APIView):
         403: StatusAuthErrSerializer,
     }
 )
+
+
 class OrderView(APIView):
     """API для работы с заказами пользователя"""
-    
+
     @extend_schema(
         summary='Get user orders',
         responses={
@@ -868,10 +1014,10 @@ class OrderView(APIView):
         """Получение списка заказов пользователя"""
         if not request.user.is_authenticated:
             return JsonResponse(
-                {'Status': False, 'Error': 'Требуется авторизация'}, 
+                {'Status': False, 'Error': 'Требуется авторизация'},
                 status=403
             )
-            
+
         orders = Order.objects.filter(
             user_id=request.user.id
         ).exclude(state='basket').prefetch_related(
@@ -909,17 +1055,17 @@ class OrderView(APIView):
         try:
             order_id = int(request.data['id'])
             updated = Order.objects.filter(
-                user_id=request.user.id, 
+                user_id=request.user.id,
                 id=order_id
             ).update(
                 contact_id=request.data['contact'],
                 state='new'
             )
-            
+
             if updated:
                 new_order.send(sender=self.__class__, user_id=request.user.id)
                 return JsonResponse({'Status': True})
-                
+
         except (ValueError, IntegrityError):
             return JsonResponse(
                 {'Status': False, 'Errors': 'Некорректные данные заказа'},
@@ -950,7 +1096,7 @@ class OrderView(APIView):
 )
 class ResultsView(APIView):
     """API для проверки статуса асинхронных задач Celery"""
-    
+
     throttle_scope = 'celery_tasks'
 
     def get(self, request, *args, **kwargs):
@@ -960,7 +1106,7 @@ class ResultsView(APIView):
                 {'Status': False, 'Error': 'Требуется авторизация'},
                 status=403
             )
-        
+
         task_id = request.data.get('task_id')
         if not task_id:
             return JsonResponse(
@@ -973,7 +1119,7 @@ class ResultsView(APIView):
         except Exception as e:
             return JsonResponse(
                 {
-                    'Status': False, 
+                    'Status': False,
                     'Errors': f'Задача {task_id} не найдена'
                 },
                 status=404
@@ -983,5 +1129,7 @@ class ResultsView(APIView):
             'Status': True,
             'Task_id': task_id,
             'State': task.state,
-            'Results': task.result if task.state == 'SUCCESS' else str(task.result)
+            'Results': task.result if task.state == 'SUCCESS' else str(
+                task.result
+            )
         })

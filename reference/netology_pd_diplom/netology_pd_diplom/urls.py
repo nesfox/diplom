@@ -26,7 +26,7 @@ import time
 
 def trigger_error(request):
     """Тестовая view для проверки интеграции Sentry.
-    
+
     Намеренно вызывает ошибку деления на ноль для тестирования Sentry.
     В production должен быть заменен на корректную обработку ошибок.
     """
@@ -36,8 +36,8 @@ def trigger_error(request):
 
 def simulate_long_request(request):
     """Тестовая view для проверки мониторинга производительности.
-    
-    Имитирует долгий запрос (4 секунды) для тестирования 
+
+    Имитирует долгий запрос (4 секунды) для тестирования
     производительности в Sentry.
     """
     time.sleep(4)
@@ -48,22 +48,26 @@ urlpatterns = [
     # Админка и Jet
     path('jet/', include('jet.urls', 'jet')),
     path('admin/', admin.site.urls),
-    
+
     # API endpoints
     path('api/v1/', include('backend.urls', namespace='backend')),
-    
+
     # Документация API
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/schema/swagger-ui/', 
-        SpectacularSwaggerView.as_view(url_name='schema'), 
-        name='swagger-ui'),
-    path('api/schema/redoc/', 
-        SpectacularRedocView.as_view(url_name='schema'), 
-        name='redoc'),
-    
+    path(
+        'api/schema/swagger-ui/',
+        SpectacularSwaggerView.as_view(url_name='schema'),
+        name='swagger-ui'
+    ),
+    path(
+        'api/schema/redoc/',
+        SpectacularRedocView.as_view(url_name='schema'),
+        name='redoc'
+    ),
+
     # Профилирование
     path('silk/', include('silk.urls', namespace='silk')),
-    
+
     # Тестовые endpoints для мониторинга
     path('sentry-debug/', trigger_error),
     path('performance-test/', simulate_long_request),
